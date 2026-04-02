@@ -1,0 +1,191 @@
+name: test-all
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    # Run every night at midnight UTC.
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# Each job below MUST have a matching entry in the `coveralls-finish.needs`
+# list. Keeping both lists in sync is the key to avoiding "missing jobs
+# referenced" errors in the coveralls-finish job.
+jobs:
+  abtesting-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: ABTestingUnit
+      coveralls_flag: abtesting
+
+  ai-spm:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [FirebaseAILogicUnit, FirebaseAIUnit]
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: ${{ matrix.target }}
+      setup_command: scripts/update_vertexai_responses.sh
+      coveralls_flag: ai-${{ matrix.target }}
+
+  appcheck-spm:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [FirebaseAppCheckUnit, FirebaseAppCheckUnitSwift]
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: ${{ matrix.target }}
+      coveralls_flag: appcheck-${{ matrix.target }}
+
+  appdistribution-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: AppDistributionUnit
+      coveralls_flag: appdistribution
+
+  auth-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: AuthUnit
+      buildonly_platforms: macOS
+      coveralls_flag: auth
+
+  core-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: CoreUnit
+      coveralls_flag: core
+
+  core-internal-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseCoreInternalTests
+      coveralls_flag: core-internal
+
+  crashlytics-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseCrashlyticsUnit
+      coveralls_flag: crashlytics
+
+  database-spm:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [DatabaseUnit, DatabaseUnitSwift]
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: ${{ matrix.target }}
+      coveralls_flag: database-${{ matrix.target }}
+
+  firestore-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseFirestore
+      coveralls_flag: firestore
+
+  functions-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseFunctionsUnit
+      coveralls_flag: functions
+
+  inappmessaging-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseInAppMessaging-Beta
+      coveralls_flag: inappmessaging
+
+  installations-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseInstallations
+      coveralls_flag: installations
+
+  messaging-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: MessagingUnit
+      coveralls_flag: messaging
+
+  mlmodeldownloader-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseMLModelDownloaderUnit
+      coveralls_flag: mlmodeldownloader
+
+  performance-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: PerformanceUnit
+      coveralls_flag: performance
+
+  remoteconfig-spm:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [RemoteConfigUnit, RemoteConfigFakeConsole]
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: ${{ matrix.target }}
+      coveralls_flag: remoteconfig-${{ matrix.target }}
+
+  sessions-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseSessionsUnit
+      coveralls_flag: sessions
+
+  sharedswift-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseSharedSwiftTests
+      coveralls_flag: sharedswift
+
+  storage-spm:
+    uses: ./.github/workflows/_spm.yml
+    with:
+      target: FirebaseStorageUnit
+      coveralls_flag: storage
+
+  # This job signals Coveralls that all parallel coverage reports have been
+  # submitted. It must list every job defined above in `needs` so that it
+  # waits for every test job to finish before sending the finish signal.
+  # `if: always()` ensures this job runs even when upstream jobs fail or are
+  # skipped, which prevents the finish signal from being lost.
+  coveralls-finish:
+    needs:
+      - abtesting-spm
+      - ai-spm
+      - appcheck-spm
+      - appdistribution-spm
+      - auth-spm
+      - core-spm
+      - core-internal-spm
+      - crashlytics-spm
+      - database-spm
+      - firestore-spm
+      - functions-spm
+      - inappmessaging-spm
+      - installations-spm
+      - messaging-spm
+      - mlmodeldownloader-spm
+      - performance-spm
+      - remoteconfig-spm
+      - sessions-spm
+      - sharedswift-spm
+      - storage-spm
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls finished
+        uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
+        with:
+          parallel-finished: true
