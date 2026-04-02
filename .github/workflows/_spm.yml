@@ -171,7 +171,13 @@ jobs:
         # If build did not succeed, then xcresult won't exist. Warn for visibility.
         if-no-files-found: warn
     - name: Report coverage to Coveralls
-      if: inputs.coveralls_flag != '' && contains(inputs.platforms, matrix.platform) && !contains(inputs.buildonly_platforms, matrix.platform) && !contains(inputs.buildonly_platforms, 'all')
+      # Upload only when: a flag was requested AND the platform actually ran
+      # tests (i.e. it is in `platforms` AND not in `buildonly_platforms`).
+      if: >-
+        inputs.coveralls_flag != '' &&
+        contains(inputs.platforms, matrix.platform) &&
+        !contains(inputs.buildonly_platforms, matrix.platform) &&
+        !contains(inputs.buildonly_platforms, 'all')
       uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         flag-name: ${{ inputs.coveralls_flag }}-${{ matrix.platform }}-${{ matrix.os }}
